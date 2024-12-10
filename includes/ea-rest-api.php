@@ -68,16 +68,24 @@ if (!class_exists('EeasyAppRestAPI')) {
             );
 			
 			// This route for fetching product reviews by product ID
-            $this->register_route(
-                'flutter-app/v1', '/product-reviews/',
-                'handle_get_reviews_by_product',
-                array(
-                    'product_id' => array(
-                        'required' => true,
-                        'sanitize_callback' => 'sanitize_text_field',
-                    ),
-                )
-            );
+			$this->register_route(
+				'flutter-app/v1', '/product-reviews/',
+				'handle_get_reviews_by_product',
+				array(
+					'product' => array(
+						'required' => true,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'per_page' => array(
+						'required' => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'page' => array(
+						'required' => false,
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+				)
+			);
         }
     
         private function register_route($namespace, $route, $callback, $args = array(), $methods = WP_REST_Server::READABLE) {
@@ -276,13 +284,19 @@ if (!class_exists('EeasyAppRestAPI')) {
         }
 		
 		public function handle_get_reviews_by_product($request) {
-			$product_id = $request['product_id'];
+			$product = $request['product']; // Updated from product_id to product
+			$per_page = isset($request['per_page']) ? (int) $request['per_page'] : 10; // Default per page is 10
+			$page = isset($request['page']) ? (int) $request['page'] : 1; // Default page is 1
+
+			// Calculate offset for pagination
+			$offset = ($page - 1) * $per_page;
 
 			// Query reviews for the product
 			$args = array(
-				'post_id' => $product_id,
+				'post_id' => $product,
 				'status'  => 'approve', // Only approved reviews
-				'number'  => 20, // Limit the number of reviews
+				'number'  => $per_page,
+				'offset'  => $offset,
 			);
 
 			$reviews = get_comments($args);
@@ -301,21 +315,24 @@ if (!class_exists('EeasyAppRestAPI')) {
 				$image_url = $image_id ? wp_get_attachment_url($image_id) : '';
 
 				// Get associated product details
-				$product = wc_get_product($product_id);
-				$product_name = $product ? $product->get_name() : '';
-				$product_permalink = $product ? $product->get_permalink() : '';
+				$product_obj = wc_get_product($product);
+				$product_name = $product_obj ? $product_obj->get_name() : '';
+				$product_permalink = $product_obj ? $product_obj->get_permalink() : '';
 
+				// Fetch and cast rating as integer
+				$rating = (int) get_comment_meta($review->comment_ID, 'rating', true);
+				
 				$reviews_data[] = array(
-					'id'                  => $review->comment_ID,
-					'date_created'         => $review->comment_date,
-					'product_id'           => $product_id,
-					'product_name'         => $product_name,
-					'product_permalink'    => $product_permalink,
+					'id'                  => (int) $review->comment_ID,
+					'date_created'        => $review->comment_date,
+					'product_id'          => (int) $product,
+					'product_name'        => $product_name,
+					'product_permalink'   => $product_permalink,
 					'status'              => $review->comment_approved ? 'approved' : 'pending',
 					'reviewer'            => $review->comment_author,
-					'reviewer_email'       => $review->comment_author_email,
+					'reviewer_email'      => $review->comment_author_email,
 					'review'              => $review->comment_content,
-					'rating'              => get_comment_meta($review->comment_ID, 'rating', true), // Rating metadata for WooCommerce reviews
+					'rating'              => $rating,
 					'verified'            => wc_review_is_from_verified_owner($review->comment_ID),
 					'reviewer_avatar_urls' => get_avatar_url($review->comment_author_email, array('size' => 48)),
 					'image'               => $image_url, // Single image URL
