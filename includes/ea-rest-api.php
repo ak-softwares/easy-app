@@ -12,22 +12,57 @@ if (!class_exists('EeasyAppRestAPI')) {
         }
     
         public function register_routes() {
-            
-            // This route for products sold together
+			
+			// This route for Iniatial App Settings 
             $this->register_route(
-                'flutter-app/v1', '/products-sold-together/',
+				'flutter-app/v1', // Namespace
+				'/app-settings/', // Endpoint
+				'handle_app_settings', // Callback function
+				array(), // Arguments (none needed for this route)
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
+            );
+			
+			// This route for fetch home banners
+            $this->register_route(
+				'flutter-app/v1', // Namespace
+				'/home-banners/', // Endpoint
+				'handle_fetch_banners', // Callback function
+				array(), // Arguments (none needed for this route)
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
+            );
+			
+			// This route for products sold together
+            $this->register_route(
+                'flutter-app/v1',
+				'/products-sold-together/',
                 'handle_products_sold_together',
                 array(
                     'product_id' => array(
                         'required' => true,
                         'sanitize_callback' => 'sanitize_text_field',
                     ),
-                )
+                ),
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
+            );
+			
+            // This route for products sold together
+            $this->register_route(
+                'flutter-app/v1',
+				'/products-sold-together/',
+                'handle_products_sold_together',
+                array(
+                    'product_id' => array(
+                        'required' => true,
+                        'sanitize_callback' => 'sanitize_text_field',
+                    ),
+                ),
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
             );
 
             // This route for sending a reset password link to the user
             $this->register_route(
-                'flutter-app/v1', '/reset-password/',
+                'flutter-app/v1',
+				'/reset-password/',
                 'handle_password_reset',
                 array(
                     'email' => array(
@@ -35,6 +70,7 @@ if (!class_exists('EeasyAppRestAPI')) {
                         'sanitize_callback' => 'sanitize_email',
                     ),
                 ),
+				'woocommerce_rest_permission_callback', // Use custom Basic Auth callback
                 WP_REST_Server::CREATABLE
             );
 
@@ -47,12 +83,14 @@ if (!class_exists('EeasyAppRestAPI')) {
                         'required' => true,
                         'sanitize_callback' => 'sanitize_text_field',
                     ),
-                )
+                ),
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
             );
 
             // This route for user authentication
             $this->register_route(
-                'flutter-app/v1', '/authenticate/',
+                'flutter-app/v1', 
+				'/authenticate/',
                 'handle_user_authentication',
                 array(
                     'email' => array(
@@ -64,12 +102,14 @@ if (!class_exists('EeasyAppRestAPI')) {
                         'sanitize_callback' => 'sanitize_text_field',
                     ),
                 ),
+				'woocommerce_rest_permission_callback', // Use custom Basic Auth callback
                 WP_REST_Server::CREATABLE
             );
 			
 			// This route for fetching product reviews by product ID
 			$this->register_route(
-				'flutter-app/v1', '/product-reviews/',
+				'flutter-app/v1', 
+				'/product-reviews/',
 				'handle_get_reviews_by_product',
 				array(
 					'product' => array(
@@ -84,18 +124,74 @@ if (!class_exists('EeasyAppRestAPI')) {
 						'required' => false,
 						'sanitize_callback' => 'sanitize_text_field',
 					),
-				)
+				),
+				'woocommerce_rest_permission_callback' // Use custom Basic Auth callback
 			);
         }
     
-        private function register_route($namespace, $route, $callback, $args = array(), $methods = WP_REST_Server::READABLE) {
-            register_rest_route($namespace, $route, array(
-                'methods' => $methods,
-                'callback' => array($this, $callback),
-                'args' => $args,
-            ));
-        }
+		private function register_route($namespace, $route, $callback, $args = array(), $permission_callback = '__return_true', $methods = WP_REST_Server::READABLE) {
+			register_rest_route($namespace, $route, array(
+				'methods' => $methods,
+				'callback' => array($this, $callback),
+				'args' => $args,
+				'permission_callback' => is_callable($permission_callback) ? $permission_callback : array($this, $permission_callback),
+			));
+		}
     
+		// WooCommerce Basic Auth Permission Callback
+		public function woocommerce_rest_permission_callback() {
+			// Authenticate using WooCommerce's REST API authentication
+			$user = wc_rest_check_user_permissions();
+			if (is_wp_error($user)) {
+				return new WP_Error('rest_forbidden', $user->get_error_message(), ['status' => 403]);
+			}
+
+			return true;
+		}
+		
+		public function handle_app_settings(WP_REST_Request $request) {
+			$blocked_pincodes_raw = get_option('ea_setting_blocked_pincodes', '');
+			$blocked_pincodes = array_map('trim', explode(',', $blocked_pincodes_raw));
+			// Example of fetching initial data
+			$data = array(
+				'site_name' => get_bloginfo('name'),
+				'site_url'  => get_site_url(),
+				'currency' => get_option('woocommerce_currency'), // Example: WooCommerce currency setting
+				'blocked_pincodes' => $blocked_pincodes,
+			);
+
+			// Return the data as a response
+			return new WP_REST_Response($data, 200);
+		}
+		
+		public function handle_fetch_banners(WP_REST_Request $request) {
+
+			// Fetch banners data
+			$banners = [
+				[
+					'image_url' => get_option('ea_banner1_image_url', ''),
+					'target_screen' => get_option('ea_banner1_target_screen', ''),
+				],
+				[
+					'image_url' => get_option('ea_banner2_image_url', ''),
+					'target_screen' => get_option('ea_banner2_target_screen', ''),
+				],
+				[
+					'image_url' => get_option('ea_banner3_image_url', ''),
+					'target_screen' => get_option('ea_banner3_target_screen', ''),
+				],
+			];
+			
+			// Example of fetching initial data
+			$data = array(
+				'banners' => $banners,
+			);
+
+			// Return the data as a response
+			return new WP_REST_Response($data, 200);
+		}
+		
+			
         public function handle_products_sold_together($request) {
             global $wpdb;
             $product_id = $request['product_id'];
