@@ -3,7 +3,7 @@
  * Plugin Name:       EasyApp
  * Plugin URI:        https://easy-ship.in
  * Description:       Transform your WordPress site into a mobile app with EasyApp.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            AKASH
