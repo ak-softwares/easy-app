@@ -107,7 +107,7 @@ if (!class_exists('EeasyAppNotification')) {
 							'body' => '#' . $order_id,
 							'image' => 'https://aramarket.in/wp-content/uploads/Track-your-order.png',
 						];
-						$data_payload = ['url' => 'https://aramarket.in/product/siron-soldering-iron-60w-with-digital-display/'];
+						$data_payload = ['url' => 'https://aramarket.in/my-account/orders/'];
 						$response = $this->sendNotification($fcm_token, $notification_data, $data_payload)[0];
 					} else {
 						$response = array(
@@ -123,7 +123,7 @@ if (!class_exists('EeasyAppNotification')) {
 							'body' => '#' . $order_id,
 							'image' => 'https://aramarket.in/wp-content/uploads/Track-your-order.png',
 						];
-						$data_payload = ['url' => 'https://aramarket.in/product/siron-soldering-iron-60w-with-digital-display/'];
+						$data_payload = ['url' => 'https://aramarket.in/my-account/orders/'];
 						$response = $this->sendNotification($fcm_token, $notification_data, $data_payload)[0];
 					} else {
 						$response = array(
